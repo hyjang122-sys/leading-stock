@@ -4,8 +4,7 @@ import os
 BOT_TOKEN = "8524664770:AAE7Mx-BNKVifWhqpq6IveK_pGIqZl4YR04"
 CHAT_ID   = "381931611"
 
-# Cloudflare Pages URL (Cloudflare 세팅 후 변경)
-DASHBOARD_URL = "https://leading-stock.pages.dev"
+DASHBOARD_URL = "https://hyjang122-sys.github.io/leading-stock/"
 
 # 신호 임계값
 VOLUME_RATIO_MIN         = 1.5   # 거래량 / 20일 평균
