@@ -37,9 +37,9 @@ SECTOR_PAIRS = [
             {"ticker": "AMD",   "name": "AMD"},
         ],
         "kr": [
-            {"ticker": "042700", "name": "한미반도체"},
-            {"ticker": "000660", "name": "SK하이닉스"},
-            {"ticker": "196170", "name": "알테오젠"},
+            {"ticker": "035420", "name": "NAVER"},
+            {"ticker": "035720", "name": "카카오"},
+            {"ticker": "259960", "name": "크래프톤"},
         ],
         "apply_market_cap": True,
     },

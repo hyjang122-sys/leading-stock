@@ -148,6 +148,74 @@ def fetch_kr_data() -> dict:
     return result
 
 
+def _is_etf(name: str) -> bool:
+    keywords = ["KODEX", "TIGER", "ARIRANG", "KINDEX", "HANARO", "KOSEF",
+                "SOL", "ACE", "RISE", "BNK", "스팩", "SPAC", "리츠", "ETF"]
+    n = name.upper()
+    return any(k in n for k in keywords)
+
+
+def fetch_broad_candidates(top_n: int = 150) -> list:
+    """
+    KOSPI+KOSDAQ 중소형주에서 외인·기관 수급 후보 수집
+    시총 500억~5조, ETF 제외, 기존 sector_pairs 종목 제외
+    """
+    from sector_pairs import get_all_kr_tickers
+    existing = {item["ticker"] for item in get_all_kr_tickers()}
+
+    df = _get_listing()
+    df = df[df["Marcap"] >= 50_000_000_000]
+    df = df[df["Marcap"] <= 5_000_000_000_000]
+    df = df[~df["Name"].apply(_is_etf)]
+    df = df[~df["Code"].isin(existing)]
+    df = df.sort_values("Marcap", ascending=False).head(top_n).reset_index(drop=True)
+
+    result = []
+    for _, row in df.iterrows():
+        ticker = str(row["Code"]).zfill(6)
+        name   = row["Name"]
+        mktcap = int(row["Marcap"])
+        try:
+            fi = _fetch_naver_foreign(ticker, pages=4)
+            if fi.empty or len(fi) < 10:
+                continue
+
+            foreign_10d = int(fi["foreign"].iloc[-10:].sum())
+            foreign_20d = int(fi["foreign"].iloc[-20:].sum()) if len(fi) >= 20 else 0
+            inst_10d    = int(fi["inst"].iloc[-10:].sum())
+            inst_20d    = int(fi["inst"].iloc[-20:].sum()) if len(fi) >= 20 else 0
+
+            f_recent5 = fi["foreign"].iloc[-5:].mean()
+            f_prev5   = fi["foreign"].iloc[-10:-5].mean()
+            is_new_foreign = (f_recent5 > 0) and (f_prev5 <= 0)
+
+            close_series = fi["close"]
+            price_5d = 0.0
+            if len(close_series) >= 6 and close_series.iloc[-6] > 0:
+                price_5d = round((close_series.iloc[-1] / close_series.iloc[-6] - 1) * 100, 2)
+
+            if foreign_10d <= 0 and inst_10d <= 0:
+                continue
+
+            result.append({
+                "ticker":          ticker,
+                "name":            name,
+                "market_cap":      mktcap,
+                "market_cap_t":    round(mktcap / 1e12, 2),
+                "price_5d":        price_5d,
+                "foreign_10d":     foreign_10d,
+                "foreign_20d":     foreign_20d,
+                "inst_10d":        inst_10d,
+                "inst_20d":        inst_20d,
+                "is_new_foreign":  is_new_foreign,
+            })
+        except Exception as e:
+            print(f"  [broad] {ticker} {name} 오류: {e}")
+        time.sleep(0.2)
+
+    return result
+
+
 def fetch_us_data() -> dict:
     """
     US 종목 OHLCV 반환 (yfinance)

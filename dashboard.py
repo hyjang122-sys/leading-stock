@@ -11,6 +11,9 @@ ACTION_STYLE = {
     "WATCH":     ("🟡", "#856404", "#fff8e1"),
     "LATE":      ("🔴", "#721c24", "#f8d7da"),
     "AVOID":     ("⚫", "#383838", "#f0f0f0"),
+    "외인신규":   ("🔵", "#003380", "#ddeeff"),
+    "외인매집":   ("🔷", "#004499", "#e8f4ff"),
+    "기관매집":   ("🟣", "#4a0072", "#f3e8ff"),
 }
 
 def _fmt_pct(v: float) -> str:
@@ -31,7 +34,49 @@ def _fmt_foreign(v: int) -> str:
         return f"{v/1e4:+.0f}만"
     return f"{v:+,}"
 
-def generate_html(rows: list, generated_at: str = None) -> str:
+def _momentum_table(momentum_rows: list) -> str:
+    if not momentum_rows:
+        return ""
+    rows_html = ""
+    for r in momentum_rows:
+        icon, tc, bg = ACTION_STYLE.get(r["action"], ("", "#000", "#fff"))
+        rows_html += f"""
+        <tr style="background:{bg}">
+          <td style="font-weight:bold;color:{tc}">{icon} {r['action']}</td>
+          <td>{r['name']}<br><small style="color:#666">{r['ticker']}</small></td>
+          <td style="text-align:right">{_fmt_mktcap(r['market_cap_t'])}</td>
+          <td style="text-align:right;font-weight:bold">{_fmt_pct(r['price_5d'])}</td>
+          <td style="text-align:right">{_fmt_foreign(r['foreign_10d'])}</td>
+          <td style="text-align:right">{_fmt_foreign(r['foreign_20d'])}</td>
+          <td style="text-align:right">{_fmt_foreign(r['inst_10d'])}</td>
+          <td style="text-align:right">{_fmt_foreign(r['inst_20d'])}</td>
+          <td style="color:#555;font-size:12px">{r['reason']}</td>
+        </tr>"""
+    summary_counts = {}
+    for r in momentum_rows:
+        summary_counts[r["action"]] = summary_counts.get(r["action"], 0) + 1
+    summary_html = ""
+    for action, cnt in summary_counts.items():
+        icon, tc, bg = ACTION_STYLE.get(action, ("", "#000", "#fff"))
+        summary_html += f'<span style="background:{bg};color:{tc};padding:4px 12px;border-radius:12px;margin:4px;font-weight:bold">{icon} {action} {cnt}</span>'
+    return f"""
+<h2 style="margin-top:32px;font-size:17px">📡 수급 포착 (외인·기관 매집 중소형주)</h2>
+<p style="color:#888;font-size:12px;margin-bottom:8px">KOSPI+KOSDAQ 중소형주(500억~5조) 중 외국인·기관 10일 이상 순매수 종목 | 기관 = 금융투자+보험+투신+연기금 합계</p>
+<div style="margin-bottom:10px">{summary_html}</div>
+<table>
+<thead>
+<tr style="background:#343a40;color:white">
+  <th>신호</th><th>종목</th><th>시총</th><th>5일%</th>
+  <th>외인10일</th><th>외인20일</th><th>기관10일</th><th>기관20일</th><th>근거</th>
+</tr>
+</thead>
+<tbody>{rows_html}</tbody>
+</table>"""
+
+
+def generate_html(rows: list, generated_at: str = None, momentum_rows: list = None) -> str:
+    if momentum_rows is None:
+        momentum_rows = []
     if not generated_at:
         generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
@@ -102,6 +147,7 @@ def generate_html(rows: list, generated_at: str = None) -> str:
 {rows_html}
 </tbody>
 </table>
+{_momentum_table(momentum_rows)}
 <p style="color:#aaa;font-size:11px;margin-top:12px">
   ※ 투자 판단은 본인 책임. 본 스캐너는 참고용입니다.
 </p>
@@ -110,9 +156,9 @@ def generate_html(rows: list, generated_at: str = None) -> str:
     return html
 
 
-def save_dashboard(rows: list):
+def save_dashboard(rows: list, momentum_rows: list = None):
     os.makedirs(DOCS_DIR, exist_ok=True)
-    html = generate_html(rows)
+    html = generate_html(rows, momentum_rows=momentum_rows)
     path = os.path.join(DOCS_DIR, "index.html")
     with open(path, "w", encoding="utf-8") as f:
         f.write(html)

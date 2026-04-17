@@ -10,8 +10,8 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from collector import fetch_kr_data, fetch_us_data
-from signals   import compute_signals
+from collector import fetch_kr_data, fetch_us_data, fetch_broad_candidates
+from signals   import compute_signals, compute_momentum_signals
 from dashboard import save_dashboard
 from notifier  import send_telegram
 from config    import BASE_DIR, DOCS_DIR
@@ -40,7 +40,12 @@ def main():
     rows = compute_signals(kr_data, us_data)
     print(f"  신호 계산 완료: {len(rows)}행")
 
-    save_dashboard(rows)
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 수급 스캔 시작 (중소형주 150종목)")
+    candidates = fetch_broad_candidates(top_n=150)
+    momentum_rows = compute_momentum_signals(candidates)
+    print(f"  수급 포착: {len(momentum_rows)}종목")
+
+    save_dashboard(rows, momentum_rows=momentum_rows)
 
     if not args.no_git:
         git_push()

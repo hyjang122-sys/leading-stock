@@ -125,3 +125,51 @@ def compute_signals(kr_data: dict, us_data: dict) -> list:
     order = {"BUY READY": 0, "GAP": 1, "WATCH": 2, "LATE": 3, "AVOID": 4}
     rows.sort(key=lambda x: (order.get(x["action"], 9), -x["price_5d"]))
     return rows
+
+
+def compute_momentum_signals(candidates: list) -> list:
+    """
+    수급 포착 종목: 외인 신규진입 / 외인매집 / 기관매집(연기금 포함)
+    """
+    rows = []
+    for c in candidates:
+        f10 = c["foreign_10d"]
+        f20 = c["foreign_20d"]
+        i10 = c["inst_10d"]
+        i20 = c["inst_20d"]
+        is_new = c["is_new_foreign"]
+
+        if is_new and f10 > 0:
+            action = "외인신규"
+            reason = "외국인 신규 진입 (전주 매도→이번주 매수 전환)"
+        elif f10 > 0 and f20 > 0:
+            action = "외인매집"
+            reason = "외국인 10일·20일 연속 순매수"
+        elif i10 > 0 and i20 > 0:
+            action = "기관매집"
+            reason = "기관(연기금 포함) 10일·20일 연속 순매수"
+        elif f10 > 0:
+            action = "외인매집"
+            reason = "외국인 10일 순매수"
+        elif i10 > 0:
+            action = "기관매집"
+            reason = "기관 10일 순매수"
+        else:
+            continue
+
+        rows.append({
+            "ticker":         c["ticker"],
+            "name":           c["name"],
+            "market_cap_t":   c["market_cap_t"],
+            "price_5d":       c["price_5d"],
+            "foreign_10d":    f10,
+            "foreign_20d":    f20,
+            "inst_10d":       i10,
+            "inst_20d":       i20,
+            "action":         action,
+            "reason":         reason,
+        })
+
+    order = {"외인신규": 0, "외인매집": 1, "기관매집": 2}
+    rows.sort(key=lambda x: (order.get(x["action"], 9), -x["foreign_10d"]))
+    return rows
